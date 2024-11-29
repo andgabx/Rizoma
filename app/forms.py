@@ -73,9 +73,6 @@ class LoginForm(forms.Form):
         widget=forms.PasswordInput(attrs={'placeholder': 'Digite sua senha', 'class': 'form-control'})
     )
 
-from django import forms
-from .models import Campo
-
 class CampoForm(forms.ModelForm):
     class Meta:
         model = Campo
@@ -96,8 +93,6 @@ class CampoForm(forms.ModelForm):
                 'class': 'w-full px-3 py-6 bg-gray-200 rounded-lg font-bold appearance-none pr-10'
             }),
         }
-
-
 
 class PlantaCultivadaForm(forms.ModelForm):
     class Meta:
@@ -127,14 +122,3 @@ class PlantaCultivadaForm(forms.ModelForm):
         if quantidade is None or quantidade <= 0:
             raise forms.ValidationError('A quantidade plantada deve ser maior que 0.')
         return quantidade
-    
-class ProfileForm(forms.ModelForm):
-    class Meta:
-        model = Agricultor
-        fields = ['username']
-        labels = {
-            'username': 'Nome',
-        }
-        widgets = {
-            'username': forms.TextInput(attrs={'class': 'form-control'}),
-            }
