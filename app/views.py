@@ -13,7 +13,6 @@ from django.utils.decorators import method_decorator
 import json
 from datetime import date, datetime, timedelta
 from django.template.loader import render_to_string
-from .weather_api import get_weather_data
 from django.db.models.functions import Lower
 from django.http import JsonResponse
 from django.db.models import Sum
@@ -195,9 +194,6 @@ class VisualizarCampoView(LoginRequiredMixin, View):
             return JsonResponse({"error": "Invalid request"}, status=400)
 
 
-
-
-
 # Selecionar quantidade de planta para adicionar
 
 class SelecionarQuantidadeParaAdicionarPlantaView(LoginRequiredMixin, View):
@@ -265,10 +261,6 @@ class SelecionarSubcampoParaAdicionarPlantaView(LoginRequiredMixin, View):
         nova_planta.save()
         return redirect('adicionar-planta-campo', campo_id=campo_id, planta_id=planta_id, quantidade=quantidade)
 
-
-#class AdicionarPlantaView(LoginRequiredMixin, View):
-
-
 # Adicionar Planta
 class AdicionarPlantaNoCampoView(LoginRequiredMixin, View):
     login_url = '/login/'
@@ -318,8 +310,6 @@ class AdicionarPlantaNoCampoView(LoginRequiredMixin, View):
         else:
             errors = form.errors.as_json()
             return JsonResponse({'status': 'error', 'errors': errors})
-
-
 
 class DeletarPlantaView(LoginRequiredMixin, View):
     def post(self, request, planta_id):
@@ -447,153 +437,13 @@ class HomeView(LoginRequiredMixin, View):
 
     def get(self, request):
         current_date = timezone.now().date()
-        atividades = HomeView.get_atividades_por_data(request.user, current_date)
         context = {
             'current_date': current_date.strftime('%Y-%m-%d'),
             'current_page': 'home',
             'options': get_fab_content('home.html'),
-            'qtd_atividades': atividades.count(),
             'hoje': current_date  # Add today's date to the context
         }
         return render(request, 'home.html', context)
-
-    @staticmethod
-    def get_atividades_por_data(user, data):
-        return Evento.objects.filter(
-            data_inicio__lte=data,
-            data_fim__gte=data,
-            campos__agricultor=user
-        )
-
-def get_atividades_por_data(request, data):
-    data = datetime.strptime(data, '%Y-%m-%d').date()
-    atividades = HomeView.get_atividades_por_data(request.user, data)
-    context = {
-        'atividades_hoje': atividades, 
-        'qtd_atividades': atividades.count(),
-        'hoje': timezone.now().date()
-    }
-    html = render_to_string('components/home/tarefas_do_dia.html', context)
-    return JsonResponse({'html': html})
-
-
-""" Calendário """
-
-class CalendarioView(LoginRequiredMixin, View):
-    login_url = '/login/'
-
-    def get(self, request):
-        terrenos = list(request.user.campos.all())
-        terreno_id = request.GET.get('terreno_id')
-        cores = ["#FF0000", "#FD7E14", "#FFC107", "#28A745", "#007BFF", "#8A2BE2", "#FF5733", "#17A2B8", "#DA70D6", "#FFFF00"]
-
-        if terrenos:
-            if terreno_id:
-                terreno_atual = get_object_or_404(Campo, id=terreno_id, agricultor=request.user)
-            else:
-                terreno_atual = terrenos[0]
-            
-            terreno_index = terrenos.index(terreno_atual) if terreno_atual in terrenos else 0
-            terreno_anterior = terrenos[terreno_index - 1] if terreno_index > 0 else terrenos[-1]
-            terreno_proximo = terrenos[terreno_index + 1] if terreno_index < len(terrenos) - 1 else terrenos[0]
-            
-            eventos = []
-            if hasattr(terreno_atual, 'eventos') and terreno_atual.eventos is not None:
-                eventos = list(terreno_atual.eventos.values())
-
-                for evento in eventos:
-                    evento['data_inicio'] = evento['data_inicio'].strftime('%Y-%m-%d')
-                    if evento['data_fim']:
-                        evento['data_fim'] = evento['data_fim'].strftime('%Y-%m-%d')
-        else:
-            terreno_atual = "Nenhum campo foi registrado ainda"
-            terreno_anterior = None
-            terreno_proximo = None
-            eventos = []
-
-        weather_data = get_weather_data('Carpina')
-
-        moon = weather_data["moon_phase"]
-        translated_moon = "moon"
-
-        if moon == "New Moon":
-            translated_moon = "Lua Nova"
-        elif moon == "Waxing Crescent":
-            translated_moon = "Crescente"
-        elif moon == "First Quarter":
-            translated_moon = "Quarto Crescente"
-        elif moon == "Waxing Gibbous":
-            translated_moon = "Gibosa Crescente"
-        elif moon == "Full Moon":
-            translated_moon = "Lua Cheia"
-        elif moon == "Waning Gibbous":
-            translated_moon = "Gibosa Minguante"
-        elif moon == "Last Quarter" or moon == "Third Quarter":
-            translated_moon = "Quarto Minguante"
-        elif moon == "Waning Crescent":
-            translated_moon = "Minguante"
-        else:
-            translated_moon = "Fase lunar desconhecida"
-        
-        if weather_data:
-            weather_context = {
-                "city": weather_data["city"],
-                "temperature": weather_data["temperature"],
-                "condition": weather_data["condition"],
-                "icon": weather_data["icon"],
-                "moon_phase": translated_moon
-            }
-        else:
-            weather_context = {
-                "city": "N/A",
-                "temperature": "N/A",
-                "condition": "N/A",
-                "icon": "N/A",
-                "moon_phase": "N/A"
-            }
-
-        context = {
-            "eventos": json.dumps(eventos),
-            "terreno_atual": terreno_atual,
-            "terreno_anterior": terreno_anterior,
-            "terreno_proximo": terreno_proximo,
-            "terrenos": terrenos,
-            "current_page": "calendario",
-            "cores": cores,
-            **weather_context
-        }
-
-        return render(request, 'calendario.html', context)
-
-    @method_decorator(csrf_exempt, name='dispatch')
-    def post(self, request):
-        data = json.loads(request.body)
-        nome = data.get('nome', 'Tarefa')
-        descricao = data.get('descricao')
-        data_inicio = data.get('data_inicio')
-        data_fim = data.get('data_fim', data_inicio)
-        cor = data.get('cor', '#FF5733')
-        campo_id = data.get('campos')[0]
-        
-        try:
-            campo = Campo.objects.get(id=campo_id)
-            evento = Evento.objects.create(
-                nome=nome,
-                descricao=descricao,
-                data_inicio=data_inicio,
-                data_fim=data_fim,
-                cor=cor,
-                campos=campo,
-            )
-            return JsonResponse({'status': 'success', 'evento_id': evento.id})
-        
-        except Campo.DoesNotExist:
-            return JsonResponse({'status': 'error', 'message': 'Campo não encontrado'})
-        
-        except Exception as e:
-            return JsonResponse({'status': 'error', 'message': str(e)})
-
-    
         
 class ProfileView(LoginRequiredMixin, View):
     login_url = '/login/'
@@ -706,38 +556,3 @@ def get_fab_content(location, campo_id=None):
             {"icon": "bi-house-fill", "link": "", "name": "DEBUG: PASSOU NOME ERRADO PARA get_fab_content"},
         ]
     return options
-
-class AtividadesView(LoginRequiredMixin, View):    
-    def get(self, request):
-        campos = request.user.campos.all()
-        eventos = Evento.objects.filter(campos__in=campos)
-        context = {
-            'atividades': eventos,
-            'count': eventos.count()
-        }
-        return render(request, "atividades.html", context)
-
-    @staticmethod
-    def get_atividades_do_dia(user, data):
-        return Evento.objects.filter(
-            data_inicio__lte=data,
-            data_fim__gte=data,
-            campos__agricultor=user
-        )
-
-def get_atividades_do_dia(request, data):
-    data = datetime.strptime(data, '%Y-%m-%d').date()
-    atividades = AtividadesView.get_atividades_do_dia(request.user, data)
-    context = {
-        'atividades_hoje': atividades, 
-        'qtd_atividades': atividades.count(),
-        'hoje': timezone.now().date()
-    }
-    html = render_to_string('components/atividades_lista.html', context)
-    return JsonResponse({'html': html})
-
-
-#def pagatividades(request):
-#    eventos = Evento.objects.all()  # Obtenha todos os eventos
-#    terrenos = Campo.objects.all()  # Obtenha todos os terrenos
-#    return render(request, 'atividades.html', {'eventos': eventos, 'terrenos': terrenos})

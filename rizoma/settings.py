@@ -5,9 +5,8 @@ from dotenv import load_dotenv
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 load_dotenv(BASE_DIR / '.env')
-TARGET_ENV = os.getenv('TARGET_ENV', 'development')
+TARGET_ENV = os.getenv('TARGET_ENV')
 NOT_PROD = not TARGET_ENV.lower().startswith('prod')
-
 
 if NOT_PROD:
     DEBUG = True
@@ -19,9 +18,7 @@ if NOT_PROD:
             'NAME': BASE_DIR / 'db.sqlite3',
         }
     }
-    WEATHER_API_KEY = os.getenv('WEATHER_API_KEY')
 else:
-    WEATHER_API_KEY = os.getenv('WEATHER_API_KEY')
     SECRET_KEY = os.getenv('SECRET_KEY')
     DEBUG = os.getenv('DEBUG', '0').lower() in ['true', 't', '1']
     ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS').split(' ')
@@ -54,7 +51,6 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.sites',
-    'clearcache',
     'allauth',
     'allauth.account',
     'allauth.socialaccount',
@@ -144,7 +140,6 @@ ACCOUNT_EMAIL_VERIFICATION = False
 SOCIAL_AUTH_GOOGLE_OAUTH2_KEY = os.getenv('SOCIAL_AUTH_GOOGLE_OAUTH2_KEY')
 SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET = os.getenv('SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET')
 
-
 SOCIAL_AUTH_PIPELINE = (
     'social_core.pipeline.social_auth.social_details',
     'social_core.pipeline.social_auth.social_uid',
@@ -157,4 +152,3 @@ SOCIAL_AUTH_PIPELINE = (
 )
 
 ACCOUNT_AUTHENTICATION_METHOD = 'email'
-
